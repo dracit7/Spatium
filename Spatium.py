@@ -88,19 +88,27 @@ class VideoDownloader(threading.Thread):
       Output.set('等等...这个报文！这不是来自Bilibili的报文吧！别搞错了哦。')
       return
     VideoName = RawPost[beg+9:end-1]
-    if not os.path.exists(UserConfig['SavePath']):
-      os.makedirs(UserConfig['SavePath'])
-    if not os.path.exists(UserConfig['SavePath']+"\\"+VideoName):
-      os.mkdir(UserConfig['SavePath']+"\\"+VideoName)
+    try:
+      if not os.path.exists(UserConfig['SavePath']):
+        os.makedirs(UserConfig['SavePath'])
+      if not os.path.exists(UserConfig['SavePath']+"\\"+VideoName):
+        os.mkdir(UserConfig['SavePath']+"\\"+VideoName)
+    except:
+      if not os.path.exists(UserConfig['SavePath']):
+        os.makedirs(UserConfig['SavePath'])
+      if not os.path.exists(UserConfig['SavePath']+"\\这个视频名无法解析"):
+        os.mkdir(UserConfig['SavePath']+"\\这个视频名无法解析")
+      VideoName = '这个视频名无法解析'
 
     # Decipher
-    Addr = re.search(r'"durl":\[.*\}\]\}',RawPost)
+    Addr = re.search(r'"durl":\[.*\}\],"seek',RawPost)
     try:
       beg , end = Addr.span()
     except:
       Output.set('这个报文...无法解析！您输入的真的是Bilibili视频的地址吗?')
       return
-    Post = RawPost[beg+8:end-2]
+    Post = RawPost[beg+8:end-7]
+    print(Post)
     
     FileInfo=[]
     FileDicts=[]
