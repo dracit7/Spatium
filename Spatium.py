@@ -15,154 +15,217 @@ from PIL import Image,ImageTk
 
 
 def BuildHeader(RefererUrl,TargetUrl):
-  '''
-  Build a fake header to get the video from website.
-  '''
-  Addr = re.search('//.*?/',TargetUrl)
-  beg , end = Addr.span()
-  Host = TargetUrl[beg+2:end-1]
-  Header = [
-    ('Host', Host),
-    ('Connection', 'keep-alive'),
-    ('Origin', 'https://www.bilibili.com'),
-    ('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'),
-    ('Accept', '*/*'),
-    ('Referer', RefererUrl),
-    ('Accept-Language', 'zh-CN,zh;q=0.9'),
-    ('Accept-Encoding', 'gzip, deflate, br'),
-  ]
-  return Header
+	'''
+	Build a fake header to get the video from website.
+	'''
+	Addr = re.search('//.*?/',TargetUrl)
+	beg , end = Addr.span()
+	Host = TargetUrl[beg+2:end-1]
+	Header = [
+		('Host', Host),
+		('Connection', 'keep-alive'),
+		('Origin', 'https://www.bilibili.com'),
+		('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'),
+		('Accept', '*/*'),
+		('Referer', RefererUrl),
+		('Accept-Language', 'zh-CN,zh;q=0.9'),
+		('Accept-Encoding', 'gzip, deflate, br'),
+	]
+	return Header
 
 def report(count, blockSize, totalSize):
-  '''
-  Reporthook function.
-  Report progress information in form of a processbar.
-  '''
-  downloadedSize = count * blockSize
-  percent = downloadedSize * 100 / totalSize
-  Progress.set(f"{int(percent)} %")
-  ProgressBar.coords(Bar,(2,2,6*percent,19))
-  BaseWindow.update()
+	'''
+	Reporthook function.
+	Report progress information in form of a processbar.
+	'''
+	downloadedSize = count * blockSize
+	percent = downloadedSize * 100 / totalSize
+	Progress.set(f"{int(percent)} %")
+	ProgressBar.coords(Bar,(2,2,6*percent,19))
+	BaseWindow.update()
 
 def SetCookies(RawCookie):
-  '''
-  Make fake cookies to get videos which have best quality.
-  '''
-  RawCookie.set("buvid3","B1B3A2FE-A9F9-4DE7-9799-5C805F7D44EE27891infoc")
-  # You can change the UserID and ckMd5 into your account. That would be more convenient.
-  RawCookie.set("DedeUserID","357146416")
-  RawCookie.set("DedeUserID__ckMd5","6e61880a0cda1994")
-  RawCookie.set("CURRENT_QUALITY","80") # Don't think you can get the video only with this.
-  return RawCookie
+	'''
+	Make fake cookies to get videos which have best quality.
+	'''
+	RawCookie.set("buvid3","B1B3A2FE-A9F9-4DE7-9799-5C805F7D44EE27891infoc")
+	# You can change the UserID and ckMd5 into your account. That would be more convenient.
+	RawCookie.set("DedeUserID","357146416")
+	RawCookie.set("DedeUserID__ckMd5","6e61880a0cda1994")
+	RawCookie.set("CURRENT_QUALITY","80") # Don't think you can get the video only with this.
+	return RawCookie
 
 class VideoDownloader(threading.Thread):
-  def __init__(self):
-    threading.Thread.__init__(self)
-  def run(self):
+	def __init__(self):
+		threading.Thread.__init__(self)
+	def run(self):
 
-    ssl._create_default_https_context = ssl._create_unverified_context
+		ssl._create_default_https_context = ssl._create_unverified_context
 
-    # Get target url from GUI
-    RefererUrl = InputBox.get()
-    InputBox.delete(0,tkinter.END)
+		# Get target url from GUI
+		RefererUrl = InputBox.get()
+		InputBox.delete(0,tkinter.END)
 
-    # Get cookies from website and change it
-    try:
-      ResponseFromWeb = requests.get(RefererUrl)
-    except:
-      Output.set('目前本抓取器只支持Bilibili的普通视频下载,请检查您的url是否正确(番剧下载请出门右拐Dilidili,滑稽)')
-      return
-    RawCookie = ResponseFromWeb.cookies
-    Cookie = SetCookies(RawCookie)
+		# Get cookies from website and change it
+		try:
+			ResponseFromWeb = requests.get(RefererUrl)
+		except:
+			Output.set('目前本抓取器只支持Bilibili的普通视频下载,请检查您的url是否正确(番剧下载请出门右拐Dilidili,滑稽)')
+			return
+		RawCookie = ResponseFromWeb.cookies
+		Cookie = SetCookies(RawCookie)
 
-    # Get the source code of the video page
-    Output.set('正在向次元墙的另一边请求传送视频,请稍等~')
-    ResponseFromWeb = requests.get(RefererUrl,cookies=RawCookie)
-    RawPost = ResponseFromWeb.text
+		# Get the source code of the video page
+		Output.set('正在向次元墙的另一边请求传送视频,请稍等~')
+		ResponseFromWeb = requests.get(RefererUrl,cookies=RawCookie)
+		RawPost = ResponseFromWeb.text
 
-    # Get Name
-    Addr = re.search(r'"title":".*?"',RawPost)
-    try:
-      beg , end = Addr.span()
-    except:
-      Output.set('等等...这个报文！这不是来自Bilibili的报文吧！别搞错了哦。')
-      return
-    VideoName = RawPost[beg+9:end-1]
-    try:
-      if not os.path.exists(UserConfig['SavePath']):
-        os.makedirs(UserConfig['SavePath'])
-      if not os.path.exists(UserConfig['SavePath']+"\\"+VideoName):
-        os.mkdir(UserConfig['SavePath']+"\\"+VideoName)
-    except:
-      if not os.path.exists(UserConfig['SavePath']):
-        os.makedirs(UserConfig['SavePath'])
-      if not os.path.exists(UserConfig['SavePath']+"\\这个视频名无法解析"):
-        os.mkdir(UserConfig['SavePath']+"\\这个视频名无法解析")
-      VideoName = '这个视频名无法解析'
+		# Get Name
+		Addr = re.search(r'"title":".*?"',RawPost)
+		try:
+			beg , end = Addr.span()
+		except:
+			Output.set('等等...这个报文！这不是来自Bilibili的报文吧！别搞错了哦。')
+			return
+		VideoName = RawPost[beg+9:end-1]
+		try:
+			if not os.path.exists(UserConfig['SavePath']):
+				os.makedirs(UserConfig['SavePath'])
+			if not os.path.exists(UserConfig['SavePath']+"\\"+VideoName):
+				os.mkdir(UserConfig['SavePath']+"\\"+VideoName)
+		except:
+			if not os.path.exists(UserConfig['SavePath']):
+				os.makedirs(UserConfig['SavePath'])
+			if not os.path.exists(UserConfig['SavePath']+"\\这个视频名无法解析"):
+				os.mkdir(UserConfig['SavePath']+"\\这个视频名无法解析")
+			VideoName = '这个视频名无法解析'
 
-    # Decipher
-    Addr = re.search(r'"durl":\[.*\}\],"seek',RawPost)
-    try:
-      beg , end = Addr.span()
-    except:
-      Output.set('这个报文...无法解析！您输入的真的是Bilibili视频的地址吗?')
-      return
-    Post = RawPost[beg+8:end-7]
-    print(Post)
-    
-    FileInfo=[]
-    FileDicts=[]
+		# videos
+		FileInfo=[]
+		FileDicts=[]
 
-    Addr=re.search(r'\},\{',Post)
-    while Addr != None:
-      beg , end = Addr.span()
-      FileInfo.append(Post[:beg+1])
-      Post=Post[end-1:]
-      Addr=re.search(r'\},\{',Post)
-    FileInfo.append(Post)
+		Addr = re.search(r'"video":.*,"audio"',RawPost)
+		try:
+			beg , end = Addr.span()
+		except:
+			print(RawPost)
+			Output.set('这个报文...无法解析！您输入的真的是Bilibili视频的地址吗?')
+			return
+		Post = RawPost[beg+9:end-9]
+		# print(Post)
+		
+		Addr=re.search(r'\},\{',Post)
+		while Addr != None:
+			beg , end = Addr.span()
+			FileInfo.append(Post[:beg+1])
+			Post=Post[end-1:]
+			Addr=re.search(r'\},\{',Post)
+		FileInfo.append(Post)
 
-    for i in range(0,len(FileInfo)):
-      FileDicts.append(json.loads(FileInfo[i]))
+		# audios
+		AudioInfo = []
+		AudioDicts = []
 
-    # Print file information
-    FileNum = len(FileDicts)
-    Output.set("视频信息获取完毕,共有"+str(FileNum)+"个文件")
-    time.sleep(2)
+		Addr=re.search(r',"audio":.*,"session"',RawPost)
+		beg, end = Addr.span()
+		Post = RawPost[beg+10:end-13]
 
-    # Recieve videos
-    for i in range(0,FileNum):
-      Header = BuildHeader(RefererUrl,FileDicts[i]['url'])
-      opener = urllib.request.build_opener()
-      opener.addheaders = Header
-      urllib.request.install_opener(opener)
-      FileName = UserConfig['SavePath']+'\\'+VideoName+"\\Part{}.flv".format(i+1)
-      Output.set("开始传送文件{},还剩{}个".format(i+1,FileNum-i-1))
-      try:
-        urllib.request.urlretrieve(FileDicts[i]['url'],filename=FileName,reporthook=report)
-      except:
-        Output.set("文件传送中出了一点小问题......请检查一下您的网络连接是否正常,然后重新下载。")
-        ProgressBar.coords(Bar,(2,2,2,19))
-        Progress.set(f'下载失败')
-        BaseWindow.update()
-        return
-    Output.set('所有文件传送完毕.')
+		Addr=re.search(r'\},\{',Post)
+		while Addr != None:
+			beg , end = Addr.span()
+			AudioInfo.append(Post[:beg+1])
+			Post=Post[end-1:]
+			Addr=re.search(r'\},\{',Post)
+		AudioInfo.append(Post)
 
-    if UserConfig['IfConnect'] == 1:
-      import moviepy.editor
-      Output.set("正在拼接视频 ... (由于python的效率问题这可能会比较漫长,请耐心等待)")
-      VideoPart = []
-      for i in range(0,FileNum):
-        VideoPart.append(moviepy.editor.VideoFileClip(UserConfig['SavePath']+'\\'+VideoName+"\\Part{}.flv".format(i+1)))
-      Video = moviepy.editor.concatenate_videoclips(VideoPart)
-      Video.write_videofile(UserConfig['SavePath']+'\\'+VideoName+'.mp4')
-      Output.set("拼接完成.")
+		# Load files
+		for i in range(0,len(FileInfo)):
+			try:
+				fileInfo = json.loads(FileInfo[i])
+			except:
+				print(FileInfo[i])
+				return
+			if fileInfo["id"] >= 80:
+				FileDicts.append(fileInfo)
+
+		for i in range(0,len(AudioInfo)):
+			try:
+				fileInfo = json.loads(AudioInfo[i])
+			except:
+				print(AudioInfo[i])
+				return
+			if fileInfo["id"] >= 80:
+				AudioDicts.append(fileInfo)
+
+		try:
+			if UserConfig['Recieve'] != "both" and UserConfig['Recieve'] != "audio":
+				Output.set("用户设置有误，停止下载")
+		except:
+			Output.set("用户设置有误，停止下载")
+
+		# Recieve videos
+		if UserConfig['Recieve'] == "both":
+			FileNum = len(FileDicts)
+			Output.set("视频信息获取完毕,共有"+str(FileNum)+"个文件")
+			time.sleep(2)
+
+			for i in range(0,FileNum):
+				Header = BuildHeader(RefererUrl,FileDicts[i]['baseUrl'])
+				opener = urllib.request.build_opener()
+				opener.addheaders = Header
+				urllib.request.install_opener(opener)
+				FileName = UserConfig['SavePath']+'\\'+VideoName+"\\Part{}.flv".format(i+1)
+				Output.set("开始传送文件{},还剩{}个".format(i+1,FileNum-i-1))
+				try:
+					urllib.request.urlretrieve(FileDicts[i]['baseUrl'],filename=FileName,reporthook=report)
+				except:
+					print(FileDicts[i]['baseUrl'])
+					Output.set("文件传送中出了一点小问题......请检查一下您的网络连接是否正常,然后重新下载。")
+					ProgressBar.coords(Bar,(2,2,2,19))
+					Progress.set(f'下载失败')
+					BaseWindow.update()
+					return
+			Output.set('所有文件传送完毕.')
+
+		# Recieve audios
+		FileNum = len(AudioDicts)
+		Output.set("音频信息获取完毕,共有"+str(FileNum)+"个文件")
+		time.sleep(2)
+		
+		for i in range(0,FileNum):
+			Header = BuildHeader(RefererUrl,AudioDicts[i]['baseUrl'])
+			opener = urllib.request.build_opener()
+			opener.addheaders = Header
+			urllib.request.install_opener(opener)
+			FileName = UserConfig['SavePath']+'\\'+VideoName+"\\Part{}.mp3".format(i+1)
+			Output.set("开始传送文件{},还剩{}个".format(i+1,FileNum-i-1))
+			try:
+				urllib.request.urlretrieve(AudioDicts[i]['baseUrl'],filename=FileName,reporthook=report)
+			except:
+				print(AudioDicts[i]['baseUrl'])
+				Output.set("文件传送中出了一点小问题......请检查一下您的网络连接是否正常,然后重新下载。")
+				ProgressBar.coords(Bar,(2,2,2,19))
+				Progress.set(f'下载失败')
+				BaseWindow.update()
+				return
+		Output.set('所有文件传送完毕.')
+
+		if UserConfig['IfConnect'] == 1:
+			import moviepy.editor
+			Output.set("正在拼接视频 ... (由于python的效率问题这可能会比较漫长,请耐心等待)")
+			VideoPart = []
+			for i in range(0,FileNum):
+				VideoPart.append(moviepy.editor.VideoFileClip(UserConfig['SavePath']+'\\'+VideoName+"\\Part{}.flv".format(i+1)))
+			Video = moviepy.editor.concatenate_videoclips(VideoPart)
+			Video.write_videofile(UserConfig['SavePath']+'\\'+VideoName+'.mp4')
+			Output.set("拼接完成.")
 
 def DownloadVideo():
-  Downloader = VideoDownloader()
-  Downloader.start()
+	Downloader = VideoDownloader()
+	Downloader.start()
 
 def GetHelp():
-  pass
+	pass
 
 
 # The Body of the Program
@@ -170,11 +233,11 @@ def GetHelp():
 
 # Read Configs
 try:
-  with open('UserConfig.txt','r') as file:
-    UserConfig = json.load(file)
+	with open('UserConfig.txt','r') as file:
+		UserConfig = json.load(file)
 except:
-  tkinter.messagebox.showinfo(message="用户信息文件UserConfig.txt丢失,请运行Config程序来更新设置。")
-  os.sys.exit()
+	tkinter.messagebox.showinfo(message="用户信息文件UserConfig.txt丢失,请运行Config程序来更新设置。")
+	os.sys.exit()
 
 # Build the window
 BaseWindow = tkinter.Tk()
@@ -183,10 +246,10 @@ BaseWindow.resizable(0,0)
 
 # Add Background
 try:
-  BackgroundImage = Image.open(r'Images\\Background.gif')
+	BackgroundImage = Image.open(r'Images\\Background.gif')
 except:
-  tkinter.messagebox.showinfo(message='背景载入失败,您是不是乱动Images文件夹了?哼......')
-  os.sys.exit()
+	tkinter.messagebox.showinfo(message='背景载入失败,您是不是乱动Images文件夹了?哼......')
+	os.sys.exit()
 Background = ImageTk.PhotoImage(BackgroundImage)
 Width,Height = Background.width(),Background.height()
 BaseWindow.geometry('{}x{}'.format(Width,Height))
@@ -204,10 +267,10 @@ Output.set('输出信息会显示在这里,有什么问题看这里就Ok啦')
 
 # Build start button
 try:
-  ButtonImage = Image.open(r'Images\\MainButton.gif')
+	ButtonImage = Image.open(r'Images\\MainButton.gif')
 except:
-  tkinter.messagebox.showinfo(message='按钮图片找不到了,都说了不要动Images文件夹啦...')
-  os.sys.exit()
+	tkinter.messagebox.showinfo(message='按钮图片找不到了,都说了不要动Images文件夹啦...')
+	os.sys.exit()
 ButtonImage = ImageTk.PhotoImage(ButtonImage)
 Button = tkinter.Button(BaseWindow,image=ButtonImage,borderwidth=0,command=DownloadVideo)
 Button.place(x=320,y=310)
@@ -225,7 +288,7 @@ Bar = ProgressBar.create_rectangle(2,2,2,19,outline='',width=0,fill='SkyBlue')
 Text = ProgressBar.create_text(300,10,text=Progress.get(),fill='Navy')
 
 def Update(varname, index, mode):
-  ProgressBar.itemconfigure(Text,text=BaseWindow.getvar(varname))
+	ProgressBar.itemconfigure(Text,text=BaseWindow.getvar(varname))
 Progress.trace_variable('w',Update)
 
 Help = tkinter.Menu(BaseWindow)

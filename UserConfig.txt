@@ -1,1 +1,1 @@
-{"IfConnect": 1, "SavePath": "Videos"}
+{"IfConnect": 0, "SavePath": "Videos", "Recieve": "audio"}
